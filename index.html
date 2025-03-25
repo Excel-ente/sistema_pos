@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema POS</title>
+    <!-- Font Awesome para iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- ZXing para escaneo de códigos de barras -->
+    <script src="https://unpkg.com/@zxing/library@0.19.1"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container header-content">
+            <div class="logo-container">
+                <div class="logo">
+                    <i class="fas fa-shopping-cart"></i>
+                </div>
+                <div class="company-info">
+                    <h1>Mi Empresa</h1>
+                    <p>Terminal Principal</p>
+                </div>
+            </div>
+            <div class="user-info">
+                <p>Juan Pérez</p>
+                <p id="current-date"></p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container main-content">
+        <!-- Products Section -->
+        <section class="section">
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" id="search-input" class="search-input" placeholder="Buscar productos por nombre o código...">
+                </div>
+                <button id="scanner-btn" class="btn btn-outline btn-icon" title="Escanear código de barras">
+                    <i class="fas fa-camera"></i>
+                </button>
+            </div>
+
+            <div id="products-grid" class="products-grid">
+                <!-- Products will be dynamically added here -->
+            </div>
+        </section>
+
+        <!-- Cart Section -->
+        <section class="section">
+            <div class="cart-container">
+                <div class="cart-header">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Carrito de Compra</span>
+                </div>
+                
+                <div id="cart-content">
+                    <!-- Cart content will be dynamically added here -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Scanner Modal -->
+    <div id="scanner-modal" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Escanear código de barras</h2>
+            </div>
+            <div class="modal-body">
+                <div class="scanner-container">
+                    <video id="scanner-video" class="scanner-video"></video>
+                    <div id="scanner-overlay" class="scanner-overlay">
+                        <div class="scanner-target">
+                            <div class="scanner-line"></div>
+                            <div class="scanner-pulse"></div>
+                        </div>
+                    </div>
+                    <div id="scanner-error" class="scanner-error" style="display: none;">
+                        <i class="fas fa-barcode scanner-error-icon"></i>
+                        <p id="scanner-error-message" class="scanner-error-message"></p>
+                        <p class="scanner-error-help">
+                            Asegúrese de que su dispositivo tenga una cámara y que haya concedido permisos para utilizarla.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="scanner-cancel" class="btn btn-outline">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="payment-modal" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Procesar Pago</h2>
+            </div>
+            <div class="modal-body">
+                <div class="summary-row summary-total">
+                    <span>Total a pagar:</span>
+                    <span id="payment-total"></span>
+                </div>
+                
+                <div class="switch-container">
+                    <label class="switch">
+                        <input type="checkbox" id="mixed-payment-toggle">
+                        <span class="slider"></span>
+                    </label>
+                    <span>Pago mixto</span>
+                </div>
+                
+                <div id="single-payment-container">
+                    <div class="tabs">
+                        <div class="tab-list">
+                            <div class="tab-trigger active" data-tab="cash">
+                                <i class="fas fa-dollar-sign"></i> Efectivo
+                            </div>
+                            <div class="tab-trigger" data-tab="card">
+                                <i class="fas fa-credit-card"></i> Tarjeta
+                            </div>
+                            <div class="tab-trigger" data-tab="qr">
+                                <i class="fas fa-qrcode"></i> QR
+                            </div>
+                        </div>
+                        
+                        <div id="cash-tab" class="tab-content active">
+                            <div class="form-group">
+                                <label class="form-label" for="single-received-amount">Monto recibido</label>
+                                <input type="number" id="single-received-amount" class="form-input" min="0" step="0.01">
+                            </div>
+                            <div id="single-change-container" style="display: none;">
+                                <div class="summary-row">
+                                    <span>Cambio:</span>
+                                    <span id="single-change-amount"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="card-tab" class="tab-content">
+                            <p style="text-align: center; color: var(--color-text-secondary); padding: 1rem 0;">
+                                Procesar pago con tarjeta por <span id="card-payment-amount"></span>
+                            </p>
+                        </div>
+                        
+                        <div id="qr-tab" class="tab-content">
+                            <p style="text-align: center; color: var(--color-text-secondary); padding: 1rem 0;">
+                                Procesar pago con QR por <span id="qr-payment-amount"></span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="mixed-payment-container" style="display: none;">
+                    <div class="payment-summary">
+                        <div class="summary-row">
+                            <span>Total pagado:</span>
+                            <span id="mixed-total-paid">$0.00</span>
+                        </div>
+                        <div class="summary-row summary-total">
+                            <span>Restante:</span>
+                            <span id="mixed-remaining"></span>
+                        </div>
+                    </div>
+                    
+                    <div id="payments-list" style="margin-bottom: 1rem;">
+                        <!-- Payments will be added here -->
+                    </div>
+                    
+                    <div id="mixed-payment-form">
+                        <div class="tabs">
+                            <div class="tab-list">
+                                <div class="tab-trigger active" data-tab="mixed-cash">
+                                    <i class="fas fa-dollar-sign"></i> Efectivo
+                                </div>
+                                <div class="tab-trigger" data-tab="mixed-card">
+                                    <i class="fas fa-credit-card"></i> Tarjeta
+                                </div>
+                                <div class="tab-trigger" data-tab="mixed-qr">
+                                    <i class="fas fa-qrcode"></i> QR
+                                </div>
+                            </div>
+                            
+                            <div id="mixed-cash-tab" class="tab-content active">
+                                <div class="form-group">
+                                    <label class="form-label" for="mixed-payment-amount">Monto a pagar</label>
+                                    <input type="number" id="mixed-payment-amount" class="form-input" min="0" step="0.01">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label" for="mixed-received-amount">Monto recibido</label>
+                                    <input type="number" id="mixed-received-amount" class="form-input" min="0" step="0.01">
+                                </div>
+                                <div id="mixed-change-container" style="display: none;">
+                                    <div class="summary-row">
+                                        <span>Cambio:</span>
+                                        <span id="mixed-change-amount"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="mixed-card-tab" class="tab-content">
+                                <div class="form-group">
+                                    <label class="form-label" for="mixed-card-amount">Monto a pagar</label>
+                                    <input type="number" id="mixed-card-amount" class="form-input" min="0" step="0.01">
+                                </div>
+                            </div>
+                            
+                            <div id="mixed-qr-tab" class="tab-content">
+                                <div class="form-group">
+                                    <label class="form-label" for="mixed-qr-amount">Monto a pagar</label>
+                                    <input type="number" id="mixed-qr-amount" class="form-input" min="0" step="0.01">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button id="add-payment-btn" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                            Agregar Pago
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="payment-cancel" class="btn btn-outline">Cancelar</button>
+                <button id="payment-confirm" class="btn btn-primary">Confirmar Pago</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Modal -->
+    <div id="receipt-modal" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Comprobante de Venta</h2>
+            </div>
+            <div class="modal-body">
+                <div id="receipt-content" class="receipt">
+                    <!-- Receipt content will be dynamically added here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="print-receipt" class="btn btn-outline">
+                    <i class="fas fa-print"></i> Imprimir
+                </button>
+                <button id="finish-sale" class="btn btn-primary">Finalizar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
